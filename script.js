@@ -1,5 +1,6 @@
 var prevCursorX;
 var prevCursorY;
+var isMouseDown = false;
 
 var c0 = document.getElementById("canvas-0");
 var ctx0 = c0.getContext("2d");
@@ -87,6 +88,18 @@ function drawCursor(e, ctx){
     prevCursorY = mPos.row;
 }
 
+function drawRect(ctx, startX, startY, endX, endY, color){
+    for(var i = startX; i <= endX; i++){
+        drawCell(ctx, i, startY, color);
+        drawCell(ctx, i, endY, color);
+    }
+
+    for(var j = startY; j <= endY; j++){
+        drawCell(ctx, startX, j, color);
+        drawCell(ctx, endX, j, color);
+    }
+}
+
 function pencil(e, ctx){
     var mPos = getMousePosition(e)
     drawCell(ctx, mPos.col, mPos.row, "white");
@@ -96,8 +109,38 @@ c1.addEventListener("click", function(e){
     pencil(e, ctx0);
 }, false);
 
+var prevRectX, prevRectY;
 c1.addEventListener("mousemove", function(e){
     drawCursor(e, ctx1);
+    if(isMouseDown){
+        var mPos = getMousePosition(e);
+        drawRect(ctx1, startX, startY, prevRectX, prevRectY, "clear");
+        drawRect(ctx1, startX, startY, mPos.col, mPos.row, "red");
+
+        prevRectX = mPos.col;
+        prevRectY = mPos.row;
+    }
+}, false);
+
+c1.addEventListener("mousedown", function(e){
+    isMouseDown = true;
+
+    var mPos = getMousePosition(e);
+    startX = mPos.col;
+    startY = mPos.row;
+
+}, false);
+
+c1.addEventListener("mouseup", function(e){
+    isMouseDown = false;
+
+    var mPos = getMousePosition(e);
+    endX = mPos.col;
+    endY = mPos.row;
+
+    drawRect(ctx1, startX, startY, prevCursorX, prevCursorY, "clear");
+    drawRect(ctx0, startX, startY, endX, endY, "white");
+
 }, false);
 
 drawGrid();
