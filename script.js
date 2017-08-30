@@ -1,44 +1,50 @@
-var c = document.getElementById("canvas");
-var ctx = c.getContext("2d");
+var prevCursorX;
+var prevCursorY;
+
+var c0 = document.getElementById("canvas-0");
+var ctx0 = c0.getContext("2d");
+
+var c1 = document.getElementById("canvas-1");
+var ctx1 = c1.getContext("2d");
     
 function drawGrid(){  
     var j = 0;
 
-    ctx.strokeStyle = "#2d2d2d";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for(var i = 0; i < c.width; i+=12){
+    ctx0.strokeStyle = "#2d2d2d";
+    ctx0.lineWidth = 1;
+    ctx0.beginPath();
+    for(var i = 0; i < c0.width; i+=12){
         if(i % 96 == 0){
             j++;
         }
 
-        ctx.moveTo(i + 0.5 + j, 0);
-        ctx.lineTo(i + 0.5 + j, c.height);
+        ctx0.moveTo(i + 0.5 + j, 0);
+        ctx0.lineTo(i + 0.5 + j, c0.height);
 
-        if(i < c.height){
-            ctx.moveTo(0, i + 0.5 + j);
-            ctx.lineTo(c.width, i + 0.5 + j);
+        if(i < c0.height){
+            ctx0.moveTo(0, i + 0.5 + j);
+            ctx0.lineTo(c0.width, i + 0.5 + j);
         }
     }
-    ctx.stroke();
+    ctx0.stroke();
 
-    ctx.strokeStyle = "#383838";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    for(var k = 0; k < c.width; k+=96){
-        ctx.moveTo(++k, 0);
-        ctx.lineTo(k, c.height);
+    ctx0.strokeStyle = "#383838";
+    ctx0.lineWidth = 2;
+    ctx0.beginPath();
+    for(var k = 0; k < c0.width; k+=96){
+        ctx0.moveTo(++k, 0);
+        ctx0.lineTo(k, c0.height);
 
-        if(k < c.height){
-            ctx.moveTo(0, k);
-            ctx.lineTo(c.width, k);
+        if(k < c0.height){
+            ctx0.moveTo(0, k);
+            ctx0.lineTo(c0.width, k);
         }
     }   
-    ctx.stroke();
+    ctx0.stroke();
 }
 
 function getMousePosition(e){
-    var rect = c.getBoundingClientRect();
+    var rect = c0.getBoundingClientRect();
 
     var mouseX = Math.floor(e.clientX) - Math.floor(rect.left) - 2;
     var mouseY = Math.floor(e.clientY) - Math.floor(rect.top) - 2;
@@ -55,22 +61,43 @@ function getMousePosition(e){
     }
 }
 
-function drawCell(col, row, color){
+function drawCell(ctx, col, row, color){
     var blockX = Math.floor(col / 8);
     var blockY = Math.floor(row / 8);
 
     var x = (col * 12) + 2 + blockX;
     var y = (row * 12) + 2 + blockY;   
 
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, 11, 11);
+    if(color === "clear"){
+        ctx.clearRect(x, y, 11, 11);
+    }
+    else{
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, 11, 11);
+    }
 }
 
-function pencil(e){
+function drawCursor(e, ctx){
+    var mPos = getMousePosition(e);
+    
+    drawCell(ctx, prevCursorX, prevCursorY, "clear");
+    drawCell(ctx, mPos.col, mPos.row, "red");
+
+    prevCursorX = mPos.col;
+    prevCursorY = mPos.row;
+}
+
+function pencil(e, ctx){
     var mPos = getMousePosition(e)
-    drawCell(mPos.col, mPos.row, "white");
+    drawCell(ctx, mPos.col, mPos.row, "white");
 }
 
-c.addEventListener("click", pencil, false);
+c1.addEventListener("click", function(e){
+    pencil(e, ctx0);
+}, false);
+
+c1.addEventListener("mousemove", function(e){
+    drawCursor(e, ctx1);
+}, false);
 
 drawGrid();

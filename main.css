@@ -1,9 +1,22 @@
-body {
-    text-align: center;
-}
-
-#canvas {
-    background-color: black;
+canvas {
     image-rendering: pixelated;
     cursor: crosshair;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#canvas-wrapper {
+    position: relative;
+    width: 1554px;
+    height: 778px;
+}
+
+#canvas-0 {
+    background-color: black;
+    z-index: 0;
+}
+
+#canvas-1 {
+    z-index: 1;
 }
