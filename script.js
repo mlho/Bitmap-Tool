@@ -1,5 +1,4 @@
-var prevCursorX;
-var prevCursorY;
+var prevCursorX, prevCursorY;
 var isMouseDown = false;
 
 var c0 = document.getElementById("canvas-0");
@@ -89,6 +88,18 @@ function drawCursor(e, ctx){
 }
 
 function drawRect(ctx, startX, startY, endX, endY, color){
+    if(startX > endX){
+        var temp = endX;
+        endX = startX;
+        startX = temp;
+    }
+
+    if(startY > endY){
+        var temp = endY;
+        endY = startY;
+        startY = temp;
+    }
+
     for(var i = startX; i <= endX; i++){
         drawCell(ctx, i, startY, color);
         drawCell(ctx, i, endY, color);
@@ -100,47 +111,105 @@ function drawRect(ctx, startX, startY, endX, endY, color){
     }
 }
 
+function getDistance(x0, y0, x1, y1){
+    return Math.floor(Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2)));
+}
+
+function drawCircle(ctx, startX, startY, endX, endY, color){
+    var radius = getDistance(startX, startY, endX, endY); 
+    var x = radius;
+    var y = 0;
+    var xChange = 1 - 2 * radius;
+    var yChange = 1;
+    var err = 0;
+
+    while(x >= y){
+        drawCell(ctx, startX + x, startY + y, color);
+        drawCell(ctx, startX + x, startY - y, color);
+        drawCell(ctx, startX - x, startY + y, color);
+        drawCell(ctx, startX - x, startY - y, color);
+
+        drawCell(ctx, startX + y, startY + x, color);
+        drawCell(ctx, startX + y, startY - x, color);
+        drawCell(ctx, startX - y, startY + x, color);
+        drawCell(ctx, startX - y, startY - x, color);
+
+        y++;
+        err+= yChange;
+        yChange += 2;
+
+        if(2 * err + xChange > 0){
+            x--;
+            err+= xChange;
+            xChange += 2;
+        }
+    }
+}
+
 function pencil(e, ctx){
     var mPos = getMousePosition(e)
     drawCell(ctx, mPos.col, mPos.row, "white");
 }
 
-c1.addEventListener("click", function(e){
-    pencil(e, ctx0);
-}, false);
+function downDrag(onMove, onUp){
+    function end(e){
+        removeEventListener("mousemove", onMove);
+        removeEventListener("mouseup", end);
+        if(onUp){
+            onUp(e);
+        }
+    }
 
-var prevRectX, prevRectY;
-c1.addEventListener("mousemove", function(e){
-    drawCursor(e, ctx1);
-    if(isMouseDown){
-        var mPos = getMousePosition(e);
+    addEventListener("mousemove", onMove);
+    addEventListener("mouseup", end);
+}
+
+var tools = {};
+
+tools.Rectangle = function(e, ctx){
+    var mPos = getMousePosition(e);
+    var startX = mPos.col, startY = mPos.row;
+    var prevRectX, prevRectY;
+
+    downDrag(function(e){
         drawRect(ctx1, startX, startY, prevRectX, prevRectY, "clear");
+        mPos = getMousePosition(e);
         drawRect(ctx1, startX, startY, mPos.col, mPos.row, "red");
 
         prevRectX = mPos.col;
         prevRectY = mPos.row;
-    }
-}, false);
+    }, function(e){
+        drawRect(ctx1, startX, startY, prevRectX, prevRectY, "clear");
+        drawRect(ctx0, startX, startY, prevRectX, prevRectY, "white");
+    });
+}
+
+tools.Circle = function(e, ctx){
+    var mPos = getMousePosition(e);
+    var startX = mPos.col, startY = mPos.row;
+    var prevCircleX, prevCircleY;
+
+    downDrag(function(e){
+        drawCell(ctx1, startX, startY, "red");
+        drawCircle(ctx1, startX, startY, prevCircleX, prevCircleY, "clear");
+        mPos = getMousePosition(e);
+        drawCircle(ctx1, startX, startY, mPos.col, mPos.row, "red");
+
+        prevCircleX = mPos.col;
+        prevCircleY = mPos.row;
+    }, function(e){
+        drawCell(ctx1, startX, startY, "clear");
+        drawCircle(ctx1, startX, startY, prevCircleX, prevCircleY, "clear");
+        drawCircle(ctx0, startX, startY, prevCircleX, prevCircleY, "white");
+    });
+}
 
 c1.addEventListener("mousedown", function(e){
-    isMouseDown = true;
+    tools.Rectangle(e, ctx1);
+});
 
-    var mPos = getMousePosition(e);
-    startX = mPos.col;
-    startY = mPos.row;
-
-}, false);
-
-c1.addEventListener("mouseup", function(e){
-    isMouseDown = false;
-
-    var mPos = getMousePosition(e);
-    endX = mPos.col;
-    endY = mPos.row;
-
-    drawRect(ctx1, startX, startY, prevCursorX, prevCursorY, "clear");
-    drawRect(ctx0, startX, startY, endX, endY, "white");
-
-}, false);
+c1.addEventListener("mousemove", function(e){
+    drawCursor(e, ctx1);
+});
 
 drawGrid();
