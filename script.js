@@ -1,12 +1,82 @@
 var prevCursorX, prevCursorY;
 var isMouseDown = false;
+var SCREEN_WIDTH = 128;
+var SCREEN_HEIGHT = 64;
+var bitmap = [];
+var bigEndian = false;
+var verticalByte = false;
 
 var c0 = document.getElementById("canvas-0");
 var ctx0 = c0.getContext("2d");
 
 var c1 = document.getElementById("canvas-1");
 var ctx1 = c1.getContext("2d");
+ 
+function initBitmap(){
+    for(var i = 0; i < 64; i++){
+        var arr = new Array(128);
+        arr.fill(0);
+        bitmap.push(arr);
+    }
+}
+
+
+function clearBitmap(){
+    bitmap = [];
+    initBitmap();
+}
+
+function convertBitmapToHex(){
+    var hexmap = [];
+
+    for(var r = 0; r < bitmap.length;){
+        for(var c = 0; c < bitmap[r].length;){
+            var bin = "";
+            
+            if(verticalByte){
+                for(var i = r + 7; i >= r; i--){
+                    bin += bitmap[i][c];
+                }
+            }
+            else{
+                for(var i = c; i < c + 8; i++){
+                    bin += bitmap[r][i];
+                }
+            }
+
+            if(bigEndian){
+                bin = bin.split('').reverse().join('');
+            }
+
+            var hex = parseInt(bin, 2).toString(16);
+            hexmap.push(parseInt(bin, 2) < 16 ? "0x0" + hex : "0x" + hex);
+
+            verticalByte ? c++ : c += 8;
+        }
+        verticalByte ? r += 8: r++;
+    }
     
+    return hexmap;
+}
+
+function prettyPrint(hexmap){
+    var str = "";
+
+    for(var i = 0; i < hexmap.length; i++){
+        if(i != 0 && i % 16 == 0){
+            str += "\n";
+        }
+        
+        str += hexmap[i];
+
+        if(i != hexmap.length - 1){
+            str += ", ";
+        }
+    }
+
+    return str;
+}
+
 function drawGrid(){  
     var j = 0;
 
@@ -74,6 +144,10 @@ function drawCell(ctx, col, row, color){
     else{
         ctx.fillStyle = color;
         ctx.fillRect(x, y, 11, 11);
+
+        if(color === "white" && (col <= 127 && col >= 0) && (row <= 63 && row >= 0)){
+            bitmap[row][col] = 1;
+        }
     }
 }
 
@@ -281,9 +355,33 @@ document.getElementById("line-tool-btn").addEventListener("click", function(e){
 });
 
 document.getElementById("clear-btn").addEventListener("click", function(e){
+    clearBitmap();
     ctx0.clearRect(0, 0, c0.width, c0.height);
     drawGrid();
 });
 
+document.getElementById("write-btn").addEventListener("click", function(e){
+    var hexmap = convertBitmapToHex();
+    document.getElementById("textarea").value = prettyPrint(hexmap);
+    // console.log(bigEndian);
+});
 
+document.getElementById("little-endian-btn").addEventListener("click", function(e){
+    bigEndian = false;
+});
+
+document.getElementById("big-endian-btn").addEventListener("click", function(e){
+    bigEndian = true;
+});
+
+document.getElementById("horizontal-btn").addEventListener("click", function(e){
+    verticalByte = false;
+});
+
+document.getElementById("vertical-btn").addEventListener("click", function(e){
+    verticalByte = true;
+});
+
+
+initBitmap();
 drawGrid();

@@ -20,3 +20,10 @@ canvas {
 #canvas-1 {
     z-index: 1;
 }
+
+#textarea {
+    width: 1554px;
+    height: 1554px;
+    margin: 0;
+    padding: 0;
+}
