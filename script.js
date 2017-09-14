@@ -13,13 +13,28 @@ var c1 = document.getElementById("canvas-1");
 var ctx1 = c1.getContext("2d");
  
 function initBitmap(){
-    for(var i = 0; i < 64; i++){
-        var arr = new Array(128);
+    for(var i = 0; i < SCREEN_HEIGHT; i++){
+        var arr = new Array(SCREEN_WIDTH);
         arr.fill(0);
         bitmap.push(arr);
     }
 }
 
+function clearCanvas(ctx){
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+}
+
+function drawBitmap(ctx){
+    clearCanvas(ctx);
+    
+    for(var r = 0; r < SCREEN_HEIGHT; r++){
+        for(var c = 0; c < SCREEN_WIDTH; c++){
+            if(bitmap[r][c] === 1){
+                drawCell(ctx, c, r, "white");
+            }
+        }
+    }    
+}
 
 function clearBitmap(){
     bitmap = [];
@@ -29,8 +44,8 @@ function clearBitmap(){
 function convertBitmapToHex(){
     var hexmap = [];
 
-    for(var r = 0; r < bitmap.length;){
-        for(var c = 0; c < bitmap[r].length;){
+    for(var r = 0; r < SCREEN_HEIGHT;){
+        for(var c = 0; c < SCREEN_WIDTH;){
             var bin = "";
             
             if(verticalByte){
@@ -53,10 +68,42 @@ function convertBitmapToHex(){
 
             verticalByte ? c++ : c += 8;
         }
-        verticalByte ? r += 8: r++;
+        verticalByte ? r += 8 : r++;
     }
     
     return hexmap;
+}
+
+function convertHexmapToBitmap(hexmap){
+    var arr = hexmap.split(',');
+    var index = 0;
+
+    clearBitmap();
+
+    for(var r = 0; r < SCREEN_HEIGHT;){
+        for(var c = 0; c < SCREEN_WIDTH;){
+            var bin = parseInt(arr[index++].trim(), 16).toString(2);
+            var padbin = "00000000".substring(0, 8 - bin.length) + bin;
+
+            if(bigEndian){
+                padbin = padbin.split('').reverse().join('');
+            }
+            
+            if(verticalByte){
+                for(var i = 7, j = 0; i >= 0; i--, j++){
+                    bitmap[r + j][c] = parseInt(padbin.charAt(i));
+                }
+            }
+            else{
+                for(var i = 0; i < 8; i++){
+                    bitmap[r][c + i] = parseInt(padbin.charAt(i));
+                }
+            }
+
+            verticalByte ? c++ : c += 8;
+        }
+        verticalByte ? r += 8 : r++;
+    }
 }
 
 function prettyPrint(hexmap){
@@ -70,47 +117,47 @@ function prettyPrint(hexmap){
         str += hexmap[i];
 
         if(i != hexmap.length - 1){
-            str += ", ";
+            str += ",";
         }
     }
 
     return str;
 }
 
-function drawGrid(){  
+function drawGrid(ctx){  
     var j = 0;
 
-    ctx0.strokeStyle = "#2d2d2d";
-    ctx0.lineWidth = 1;
-    ctx0.beginPath();
-    for(var i = 0; i < c0.width; i+=12){
+    ctx.strokeStyle = "#2d2d2d";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for(var i = 0; i < ctx.canvas.width; i+=12){
         if(i % 96 == 0){
             j++;
         }
 
-        ctx0.moveTo(i + 0.5 + j, 0);
-        ctx0.lineTo(i + 0.5 + j, c0.height);
+        ctx.moveTo(i + 0.5 + j, 0);
+        ctx.lineTo(i + 0.5 + j, ctx.canvas.height);
 
-        if(i < c0.height){
-            ctx0.moveTo(0, i + 0.5 + j);
-            ctx0.lineTo(c0.width, i + 0.5 + j);
+        if(i < ctx.canvas.height){
+            ctx.moveTo(0, i + 0.5 + j);
+            ctx.lineTo(ctx.canvas.width, i + 0.5 + j);
         }
     }
-    ctx0.stroke();
+    ctx.stroke();
 
-    ctx0.strokeStyle = "#383838";
-    ctx0.lineWidth = 2;
-    ctx0.beginPath();
-    for(var k = 0; k < c0.width; k+=96){
-        ctx0.moveTo(++k, 0);
-        ctx0.lineTo(k, c0.height);
+    ctx.strokeStyle = "#383838";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for(var k = 0; k < ctx.canvas.width; k+=96){
+        ctx.moveTo(++k, 0);
+        ctx.lineTo(k, ctx.canvas.height);
 
-        if(k < c0.height){
-            ctx0.moveTo(0, k);
-            ctx0.lineTo(c0.width, k);
+        if(k < ctx.canvas.height){
+            ctx.moveTo(0, k);
+            ctx.lineTo(ctx.canvas.width, k);
         }
     }   
-    ctx0.stroke();
+    ctx.stroke();
 }
 
 function getMousePosition(e){
@@ -356,14 +403,18 @@ document.getElementById("line-tool-btn").addEventListener("click", function(e){
 
 document.getElementById("clear-btn").addEventListener("click", function(e){
     clearBitmap();
-    ctx0.clearRect(0, 0, c0.width, c0.height);
-    drawGrid();
+    clearCanvas(ctx0);
+});
+
+document.getElementById("read-btn").addEventListener("click", function(e){
+    var input = document.getElementById("textarea").value;
+    convertHexmapToBitmap(input);
+    drawBitmap(ctx0);
 });
 
 document.getElementById("write-btn").addEventListener("click", function(e){
     var hexmap = convertBitmapToHex();
     document.getElementById("textarea").value = prettyPrint(hexmap);
-    // console.log(bigEndian);
 });
 
 document.getElementById("little-endian-btn").addEventListener("click", function(e){
@@ -384,4 +435,4 @@ document.getElementById("vertical-btn").addEventListener("click", function(e){
 
 
 initBitmap();
-drawGrid();
+drawGrid(ctx1);
