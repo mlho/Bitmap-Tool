@@ -41,6 +41,14 @@ function clearBitmap(){
     initBitmap();
 }
 
+function invertBitmapColor(){
+    for(var r = 0; r < SCREEN_HEIGHT; r++){
+        for(var c = 0; c < SCREEN_WIDTH; c++){
+            bitmap[r][c] = bitmap[r][c] ? 0 : 1;  
+        }
+    }
+}
+
 function convertBitmapToHex(){
     var hexmap = [];
 
@@ -404,6 +412,11 @@ document.getElementById("line-tool-btn").addEventListener("click", function(e){
 document.getElementById("clear-btn").addEventListener("click", function(e){
     clearBitmap();
     clearCanvas(ctx0);
+});
+
+document.getElementById("invert-btn").addEventListener("click", function(e){
+    invertBitmapColor();
+    drawBitmap(ctx0);
 });
 
 document.getElementById("read-btn").addEventListener("click", function(e){
