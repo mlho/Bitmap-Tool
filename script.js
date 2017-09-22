@@ -1,16 +1,25 @@
-var prevCursorX, prevCursorY;
-var isMouseDown = false;
 var SCREEN_WIDTH = 128;
 var SCREEN_HEIGHT = 64;
-var bitmap = [];
+var CELL_SIZE = 11;
+
+var prevCursorX, prevCursorY;
+var ogx0, ogy0;
+var sx0, sy0, sx1, sy1, sw, sh;
+var isMouseDown = false;
 var bigEndian = false;
 var verticalByte = false;
+var selection = false;
+var bitmap = [];
+var copyBuffer = [];
 
 var c0 = document.getElementById("canvas-0");
 var ctx0 = c0.getContext("2d");
 
 var c1 = document.getElementById("canvas-1");
 var ctx1 = c1.getContext("2d");
+
+var c2 = document.getElementById("canvas-2");
+var ctx2 = c2.getContext("2d");
  
 function initBitmap(){
     for(var i = 0; i < SCREEN_HEIGHT; i++){
@@ -30,7 +39,7 @@ function drawBitmap(ctx){
     for(var r = 0; r < SCREEN_HEIGHT; r++){
         for(var c = 0; c < SCREEN_WIDTH; c++){
             if(bitmap[r][c] === 1){
-                drawCell(ctx, c, r, "white");
+                drawCell(ctx, c, r, CELL_SIZE, CELL_SIZE, "white");
             }
         }
     }    
@@ -186,7 +195,7 @@ function getMousePosition(e){
     }
 }
 
-function drawCell(ctx, col, row, color){
+function drawCell(ctx, col, row, w, h, color, cOffset = 0, rOffset = 0){
     var blockX = Math.floor(col / 8);
     var blockY = Math.floor(row / 8);
 
@@ -194,11 +203,11 @@ function drawCell(ctx, col, row, color){
     var y = (row * 12) + 2 + blockY;   
 
     if(color === "clear"){
-        ctx.clearRect(x, y, 11, 11);
+        ctx.clearRect(x + cOffset, y + rOffset, w, h);
     }
     else{
         ctx.fillStyle = color;
-        ctx.fillRect(x, y, 11, 11);
+        ctx.fillRect(x + cOffset, y + rOffset, w, h);
 
         if(color === "white" && (col <= 127 && col >= 0) && (row <= 63 && row >= 0)){
             bitmap[row][col] = 1;
@@ -209,11 +218,35 @@ function drawCell(ctx, col, row, color){
 function drawCursor(e, ctx){
     var mPos = getMousePosition(e);
     
-    drawCell(ctx, prevCursorX, prevCursorY, "clear");
-    drawCell(ctx, mPos.col, mPos.row, "red");
+    drawCell(ctx, prevCursorX, prevCursorY, CELL_SIZE, CELL_SIZE, "clear");
+    drawCell(ctx, mPos.col, mPos.row, CELL_SIZE, CELL_SIZE, "red");
 
     prevCursorX = mPos.col;
     prevCursorY = mPos.row;
+}
+
+function drawSelectBox(ctx, x0, y0, x1, y1, color){
+    if(x0 > x1){
+        var temp = x1;
+        x1 = x0;
+        x0 = temp;
+    }
+
+    if(y0 > y1){
+        var temp = y1;
+        y1 = y0;
+        y0 = temp;
+    }
+
+    for(var i = x0; i <= x1; i+=2){
+        drawCell(ctx, i, y0, CELL_SIZE, Math.floor(CELL_SIZE / 2), color);
+        drawCell(ctx, i, y1, CELL_SIZE, Math.floor(CELL_SIZE / 2), color, 0, Math.ceil(CELL_SIZE / 2));
+    }
+
+    for(var j = y0; j <= y1; j+=2){
+        drawCell(ctx, x0, j, Math.floor(CELL_SIZE / 2), CELL_SIZE, color);
+        drawCell(ctx, x1, j, Math.floor(CELL_SIZE / 2), CELL_SIZE, color, Math.ceil(CELL_SIZE / 2), 0);
+    }
 }
 
 function drawRect(ctx, x0, y0, x1, y1, color){
@@ -230,13 +263,13 @@ function drawRect(ctx, x0, y0, x1, y1, color){
     }
 
     for(var i = x0; i <= x1; i++){
-        drawCell(ctx, i, y0, color);
-        drawCell(ctx, i, y1, color);
+        drawCell(ctx, i, y0, CELL_SIZE, CELL_SIZE, color);
+        drawCell(ctx, i, y1, CELL_SIZE, CELL_SIZE, color);
     }
 
     for(var j = y0; j <= y1; j++){
-        drawCell(ctx, x0, j, color);
-        drawCell(ctx, x1, j, color);
+        drawCell(ctx, x0, j, CELL_SIZE, CELL_SIZE, color);
+        drawCell(ctx, x1, j, CELL_SIZE, CELL_SIZE, color);
     }
 }
 
@@ -253,15 +286,15 @@ function drawCircle(ctx, x0, y0, x1, y1, color){
     var err = 0;
 
     while(x >= y){
-        drawCell(ctx, x0 + x, y0 + y, color);
-        drawCell(ctx, x0 + x, y0 - y, color);
-        drawCell(ctx, x0 - x, y0 + y, color);
-        drawCell(ctx, x0 - x, y0 - y, color);
+        drawCell(ctx, x0 + x, y0 + y, CELL_SIZE, CELL_SIZE, color);
+        drawCell(ctx, x0 + x, y0 - y, CELL_SIZE, CELL_SIZE, color);
+        drawCell(ctx, x0 - x, y0 + y, CELL_SIZE, CELL_SIZE, color);
+        drawCell(ctx, x0 - x, y0 - y, CELL_SIZE, CELL_SIZE, color);
 
-        drawCell(ctx, x0 + y, y0 + x, color);
-        drawCell(ctx, x0 + y, y0 - x, color);
-        drawCell(ctx, x0 - y, y0 + x, color);
-        drawCell(ctx, x0 - y, y0 - x, color);
+        drawCell(ctx, x0 + y, y0 + x, CELL_SIZE, CELL_SIZE, color);
+        drawCell(ctx, x0 + y, y0 - x, CELL_SIZE, CELL_SIZE, color);
+        drawCell(ctx, x0 - y, y0 + x, CELL_SIZE, CELL_SIZE, color);
+        drawCell(ctx, x0 - y, y0 - x, CELL_SIZE, CELL_SIZE, color);
 
         y++;
         err+= yChange;
@@ -299,7 +332,7 @@ function drawLine(ctx, x0, y0, x1, y1, color){
 
     var f = 2 * dy - dx;
     for(; x0 < x1 || x0 > x1; x0 += stepX){
-        steep ? drawCell(ctx, y0, x0, color) : drawCell(ctx, x0, y0, color);
+        steep ? drawCell(ctx, y0, x0, CELL_SIZE, CELL_SIZE, color) : drawCell(ctx, x0, y0, CELL_SIZE, CELL_SIZE, color);
 
         if(f >= 0){
             y0 += stepY;
@@ -308,12 +341,12 @@ function drawLine(ctx, x0, y0, x1, y1, color){
         f += 2 * dy;
     }
 
-    steep ? drawCell(ctx, y0, x0, color) : drawCell(ctx, x0, y0, color);
+    steep ? drawCell(ctx, y0, x0, CELL_SIZE, CELL_SIZE, color) : drawCell(ctx, x0, y0, CELL_SIZE, CELL_SIZE, color);
 }
 
 function pencil(e, ctx){
     var mPos = getMousePosition(e)
-    drawCell(ctx, mPos.col, mPos.row, "white");
+    drawCell(ctx, mPos.col, mPos.row, CELL_SIZE, CELL_SIZE, "white");
 }
 
 function downDrag(onMove, onUp){
@@ -331,7 +364,7 @@ function downDrag(onMove, onUp){
 
 var tools = {};
 
-tools.Rectangle = function(e, ctx){
+tools.Rectangle = function(e){
     var mPos = getMousePosition(e);
     var x0 = mPos.col, y0 = mPos.row;
     var prevRectX, prevRectY;
@@ -349,13 +382,13 @@ tools.Rectangle = function(e, ctx){
     });
 }
 
-tools.Circle = function(e, ctx){
+tools.Circle = function(e){
     var mPos = getMousePosition(e);
     var x0 = mPos.col, y0 = mPos.row;
     var prevCircleX, prevCircleY;
 
     downDrag(function(e){
-        drawCell(ctx1, x0, y0, "red");
+        drawCell(ctx1, x0, y0, CELL_SIZE, CELL_SIZE, "red");
         drawCircle(ctx1, x0, y0, prevCircleX, prevCircleY, "clear");
         mPos = getMousePosition(e);
         drawCircle(ctx1, x0, y0, mPos.col, mPos.row, "red");
@@ -363,13 +396,13 @@ tools.Circle = function(e, ctx){
         prevCircleX = mPos.col;
         prevCircleY = mPos.row;
     }, function(e){
-        drawCell(ctx1, x0, y0, "clear");
+        drawCell(ctx1, x0, y0, CELL_SIZE, CELL_SIZE, "clear");
         drawCircle(ctx1, x0, y0, prevCircleX, prevCircleY, "clear");
         drawCircle(ctx0, x0, y0, prevCircleX, prevCircleY, "white");
     });
 }
 
-tools.Line = function(e, ctx){
+tools.Line = function(e){
     var mPos = getMousePosition(e);
     var x0 = mPos.col, y0 = mPos.row;
     var prevX, prevY;
@@ -387,14 +420,126 @@ tools.Line = function(e, ctx){
     });
 }
 
+tools.Select = function(e){
+    var mPos = getMousePosition(e);
+    var x0 = mPos.col, y0 = mPos.row;
+    var prevRectX, prevRectY;
+
+    if(selection){
+        
+        if((x0 >= sx0 && x0 <= sx1) && (y0 >= sy0 && y0 <= sy1 )){   //mouse is in box
+            var drawX = x0 - sx0;
+            var drawY = y0 - sy0;
+            
+            downDrag(function(e){
+                clearCanvas(ctx2);
+                mPos = getMousePosition(e);
+
+                drawSelectBox(ctx2, mPos.col - drawX, mPos.row - drawY, mPos.col - drawX + sw - 1, mPos.row - drawY + sh - 1, "red");
+
+                for(var r = 0; r < copyBuffer.length; r++){
+                    for(var c = 0; c < copyBuffer[r].length; c++){
+                        if(copyBuffer[r][c] === 1){
+                            drawCell(ctx2, mPos.col - drawX + c, mPos.row - drawY + r, CELL_SIZE, CELL_SIZE, "red");
+                        }
+                    }
+                }
+    
+            },function(e){
+                var x = mPos.col - drawX;
+                var y = mPos.row - drawY;
+
+                sx0 = x; sy0 = y;
+                sx1 = sx0 + sw; sy1 = sy0 + sh;
+            });
+
+            return;
+        }
+        else{   //remove selection box
+            for(var r = 0; r < copyBuffer.length; r++){
+                for(var c = 0; c < copyBuffer[r].length; c++){
+                    
+                    var x = sx0 + c;
+                    var y = sy0 + r;
+
+                    if((x < SCREEN_WIDTH && x >= 0 ) && (y < SCREEN_HEIGHT && y >= 0)){
+                        bitmap[y][x] = copyBuffer[r][c];
+                    }
+                }
+            }
+            clearCanvas(ctx2);
+            drawBitmap(ctx0);
+
+            selection = false;            
+            drawSelectBox(ctx2, sx0, sy0, sx1, sy1, "clear");
+        }        
+    }
+        
+    downDrag(function(e){
+        drawSelectBox(ctx2, x0, y0, prevRectX, prevRectY, "clear");
+        mPos = getMousePosition(e);
+        drawSelectBox(ctx2, x0, y0, mPos.col, mPos.row, "red");
+
+        prevRectX = mPos.col;
+        prevRectY = mPos.row;
+    }, function(e){
+        selection = true;
+
+        var x1 = mPos.col, y1 = mPos.row;
+        
+        if(x0 > x1){
+            var temp = x1; x1 = x0; x0 = temp;
+        }
+    
+        if(y0 > y1){
+            var temp = y1; y1 = y0; y0 = temp;
+        }    
+
+        sx0 = x0; sy0 = y0;
+        sx1 = x1; sy1 = y1;
+        ogx0 = sx0; ogy0 = sy0;
+
+        sw = x1 - x0 + 1;
+        sh = y1 - y0 + 1;
+
+        copyBuffer = [];
+        for(var i = 0; i < sh; i++){
+            var arr = new Array(sw);
+            arr.fill(0);
+            copyBuffer.push(arr);
+        }
+
+        for(var r = 0; r < copyBuffer.length; r++){
+            for(var c = 0; c < copyBuffer[r].length; c++){
+                copyBuffer[r][c] = bitmap[y0 + r][x0 + c];
+
+                if(copyBuffer[r][c] === 1){
+                    drawCell(ctx2, x0 + c, y0 + r, CELL_SIZE, CELL_SIZE, "red");
+                }
+
+                drawCell(ctx0, x0 + c, y0 + r, CELL_SIZE, CELL_SIZE, "clear");
+                bitmap[ogy0 + r][ogx0 + c] = 0;
+            }
+        }
+    });
+}
+
 var activeTool = "Rectangle";
-c1.addEventListener("mousedown", function(e){
-    tools[activeTool](e, ctx1);
+c2.addEventListener("mousedown", function(e){
     e.preventDefault();
+    tools[activeTool](e);
 });
 
-c1.addEventListener("mousemove", function(e){
-    drawCursor(e, ctx1);
+c2.addEventListener("mousemove", function(e){
+        drawCursor(e, ctx1);
+});
+
+c2.addEventListener("mouseout", function(e){
+    drawCell(ctx1, prevCursorX, prevCursorY, CELL_SIZE, CELL_SIZE, "clear");
+});
+
+document.getElementById("select-tool-btn").addEventListener("click", function(e){
+    activeTool = "Select";
 });
 
 document.getElementById("circle-tool-btn").addEventListener("click", function(e){
