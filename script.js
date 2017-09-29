@@ -1,9 +1,9 @@
 var SCREEN_WIDTH = 128;
 var SCREEN_HEIGHT = 64;
 var CELL_SIZE = 11;
+var PREVIEW_COLOR = "#ff2222";
 
 var prevCursorX, prevCursorY;
-var ogx0, ogy0;
 var sx0, sy0, sx1, sy1, sw, sh;
 var isMouseDown = false;
 var bigEndian = false;
@@ -141,6 +141,82 @@ function prettyPrint(hexmap){
     return str;
 }
 
+function downloadTXT(){
+    var data = prettyPrint(convertBitmapToHex());
+    
+    var blob = new Blob([data], {type: "text/plain"});
+    var txtURL = window.URL.createObjectURL(blob); 
+
+
+    var a = document.createElement("a");
+    a.href = txtURL;
+    a.download = document.getElementById("filename-input").value + ".txt";
+    a.click();
+}
+
+function generateSVG(){
+    var x = 0, y = 0;
+    var color;
+    var data = '<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640">';
+
+    for(var r = 0; r < SCREEN_HEIGHT; r++){
+        for(var c = 0; c < SCREEN_WIDTH; c++){
+            if(bitmap[r][c] == 1){
+                color = "white";
+            }
+            else{
+                color = "black";
+            }
+
+            data += '<rect x="' + x + '" y="' + y + '" width="10" height="10" fill="' + color + '" />';
+            x += 10; 
+        }
+        x = 0;
+        y += 10;
+    }
+    data += '</svg>';
+
+    return data;
+}
+
+function downloadSVG(){
+    var data = generateSVG();
+    var dataURL = 'data:image/svg+xml,' + encodeURIComponent(data);
+
+    var a = document.createElement("a");
+    a.href = dataURL;
+    a.download = document.getElementById("filename-input").value + ".svg";
+    a.click();
+}
+
+function downloadPNG(){
+    var canvas = document.createElement("canvas");
+    canvas.width = "1280";
+    canvas.height = "640";
+    var ctx = canvas.getContext("2d");
+
+    var data = generateSVG();
+    var svgBlob = new Blob([data], {type: 'image/svg+xml'});
+
+    var DOMURL = window.URL || window.webkitURL || window;
+    var url = DOMURL.createObjectURL(svgBlob);
+
+    var img = new Image();
+    var imgURL;
+    img.onload = function(){
+        ctx.drawImage(img, 0, 0);
+        DOMURL.revokeObjectURL(url);
+
+        canvas.toBlob(function(blob){
+            var a = document.createElement("a");
+            a.href = DOMURL.createObjectURL(blob);
+            a.download = document.getElementById("filename-input").value + ".png";
+            a.click(); 
+        }); 
+    }
+    img.src = url;       
+}
+
 function drawGrid(ctx){  
     var j = 0;
 
@@ -219,7 +295,7 @@ function drawCursor(e, ctx){
     var mPos = getMousePosition(e);
     
     drawCell(ctx, prevCursorX, prevCursorY, CELL_SIZE, CELL_SIZE, "clear");
-    drawCell(ctx, mPos.col, mPos.row, CELL_SIZE, CELL_SIZE, "red");
+    drawCell(ctx, mPos.col, mPos.row, CELL_SIZE, CELL_SIZE, PREVIEW_COLOR);
 
     prevCursorX = mPos.col;
     prevCursorY = mPos.row;
@@ -239,13 +315,13 @@ function drawSelectBox(ctx, x0, y0, x1, y1, color){
     }
 
     for(var i = x0; i <= x1; i+=2){
-        drawCell(ctx, i, y0, CELL_SIZE, Math.floor(CELL_SIZE / 2), color);
-        drawCell(ctx, i, y1, CELL_SIZE, Math.floor(CELL_SIZE / 2), color, 0, Math.ceil(CELL_SIZE / 2));
+        drawCell(ctx, i, y0, CELL_SIZE, Math.floor(CELL_SIZE / 4), color);
+        drawCell(ctx, i, y1, CELL_SIZE, Math.floor(CELL_SIZE / 4), color, 0, Math.ceil(CELL_SIZE * 3 / 4));
     }
 
     for(var j = y0; j <= y1; j+=2){
-        drawCell(ctx, x0, j, Math.floor(CELL_SIZE / 2), CELL_SIZE, color);
-        drawCell(ctx, x1, j, Math.floor(CELL_SIZE / 2), CELL_SIZE, color, Math.ceil(CELL_SIZE / 2), 0);
+        drawCell(ctx, x0, j, Math.floor(CELL_SIZE / 4), CELL_SIZE, color);
+        drawCell(ctx, x1, j, Math.floor(CELL_SIZE / 4), CELL_SIZE, color, Math.ceil(CELL_SIZE * 3/ 4), 0);
     }
 }
 
@@ -372,7 +448,7 @@ tools.Rectangle = function(e){
     downDrag(function(e){
         drawRect(ctx1, x0, y0, prevRectX, prevRectY, "clear");
         mPos = getMousePosition(e);
-        drawRect(ctx1, x0, y0, mPos.col, mPos.row, "red");
+        drawRect(ctx1, x0, y0, mPos.col, mPos.row, PREVIEW_COLOR);
 
         prevRectX = mPos.col;
         prevRectY = mPos.row;
@@ -388,10 +464,10 @@ tools.Circle = function(e){
     var prevCircleX, prevCircleY;
 
     downDrag(function(e){
-        drawCell(ctx1, x0, y0, CELL_SIZE, CELL_SIZE, "red");
+        drawCell(ctx1, x0, y0, CELL_SIZE, CELL_SIZE, PREVIEW_COLOR);
         drawCircle(ctx1, x0, y0, prevCircleX, prevCircleY, "clear");
         mPos = getMousePosition(e);
-        drawCircle(ctx1, x0, y0, mPos.col, mPos.row, "red");
+        drawCircle(ctx1, x0, y0, mPos.col, mPos.row, PREVIEW_COLOR);
 
         prevCircleX = mPos.col;
         prevCircleY = mPos.row;
@@ -410,7 +486,7 @@ tools.Line = function(e){
     downDrag(function(e){
         drawLine(ctx1, x0, y0, prevX, prevY, "clear");
         mPos = getMousePosition(e);
-        drawLine(ctx1, x0, y0, mPos.col, mPos.row, "red");
+        drawLine(ctx1, x0, y0, mPos.col, mPos.row, PREVIEW_COLOR);
 
         prevX = mPos.col;
         prevY = mPos.row;
@@ -423,31 +499,54 @@ tools.Line = function(e){
 tools.Select = function(e){
     var mPos = getMousePosition(e);
     var x0 = mPos.col, y0 = mPos.row;
-    var prevRectX, prevRectY;
+
+    function removeSelectBox(){
+
+        selection = false; 
+        clearCanvas(ctx2);
+
+        for(var r = 0; r < copyBuffer.length; r++){
+            for(var c = 0; c < copyBuffer[r].length; c++){
+                
+                var x = sx0 + c;
+                var y = sy0 + r;
+
+                if((x < SCREEN_WIDTH && x >= 0 ) && (y < SCREEN_HEIGHT && y >= 0)){
+                    bitmap[y][x] = copyBuffer[r][c];
+                }
+            }
+        }
+        drawBitmap(ctx0);
+    }
+
+    c2.addEventListener("dblclick", function(){
+        if(selection){
+            removeSelectBox();
+        }
+    });
 
     if(selection){
         
         if((x0 >= sx0 && x0 <= sx1) && (y0 >= sy0 && y0 <= sy1 )){   //mouse is in box
-            var drawX = x0 - sx0;
-            var drawY = y0 - sy0;
+            var leftOffset = x0 - sx0;
+            var topOffset = y0 - sy0;
             
             downDrag(function(e){
                 clearCanvas(ctx2);
                 mPos = getMousePosition(e);
 
-                drawSelectBox(ctx2, mPos.col - drawX, mPos.row - drawY, mPos.col - drawX + sw - 1, mPos.row - drawY + sh - 1, "red");
-
                 for(var r = 0; r < copyBuffer.length; r++){
                     for(var c = 0; c < copyBuffer[r].length; c++){
                         if(copyBuffer[r][c] === 1){
-                            drawCell(ctx2, mPos.col - drawX + c, mPos.row - drawY + r, CELL_SIZE, CELL_SIZE, "red");
+                            drawCell(ctx2, mPos.col - leftOffset + c, mPos.row - topOffset + r, CELL_SIZE, CELL_SIZE, PREVIEW_COLOR);
                         }
                     }
                 }
+                drawSelectBox(ctx2, mPos.col - leftOffset, mPos.row - topOffset, mPos.col - leftOffset + sw - 1, mPos.row - topOffset + sh - 1, PREVIEW_COLOR);
     
             },function(e){
-                var x = mPos.col - drawX;
-                var y = mPos.row - drawY;
+                var x = mPos.col - leftOffset;
+                var y = mPos.row - topOffset;
 
                 sx0 = x; sy0 = y;
                 sx1 = sx0 + sw; sy1 = sy0 + sh;
@@ -456,32 +555,37 @@ tools.Select = function(e){
             return;
         }
         else{   //remove selection box
-            for(var r = 0; r < copyBuffer.length; r++){
-                for(var c = 0; c < copyBuffer[r].length; c++){
-                    
-                    var x = sx0 + c;
-                    var y = sy0 + r;
-
-                    if((x < SCREEN_WIDTH && x >= 0 ) && (y < SCREEN_HEIGHT && y >= 0)){
-                        bitmap[y][x] = copyBuffer[r][c];
-                    }
-                }
-            }
-            clearCanvas(ctx2);
-            drawBitmap(ctx0);
-
-            selection = false;            
-            drawSelectBox(ctx2, sx0, sy0, sx1, sy1, "clear");
+            removeSelectBox();
         }        
     }
         
     downDrag(function(e){
-        drawSelectBox(ctx2, x0, y0, prevRectX, prevRectY, "clear");
+        clearCanvas(ctx2);
         mPos = getMousePosition(e);
-        drawSelectBox(ctx2, x0, y0, mPos.col, mPos.row, "red");
+        
+        var tx0 = x0, ty0 = y0;
+        var x1 = mPos.col, y1 = mPos.row;
+        
+        if(x0 > x1){
+            var temp = x1; x1 = tx0; tx0 = temp;
+        }
+    
+        if(y0 > y1){
+            var temp = y1; y1 = ty0; ty0 = temp;
+        }    
 
-        prevRectX = mPos.col;
-        prevRectY = mPos.row;
+        sw = x1 - tx0 + 1;
+        sh = y1 - ty0 + 1;
+
+        drawSelectBox(ctx2, tx0, ty0, x1, y1, PREVIEW_COLOR);
+
+        for(var r = ty0; r < ty0 + sh; r++){
+            for(var c = tx0; c < tx0 + sw; c++){
+                if(bitmap[r][c] === 1){
+                    drawCell(ctx2, c, r, CELL_SIZE, CELL_SIZE, PREVIEW_COLOR);
+                }
+            }
+        }       
     }, function(e){
         selection = true;
 
@@ -497,30 +601,22 @@ tools.Select = function(e){
 
         sx0 = x0; sy0 = y0;
         sx1 = x1; sy1 = y1;
-        ogx0 = sx0; ogy0 = sy0;
 
         sw = x1 - x0 + 1;
         sh = y1 - y0 + 1;
 
-        copyBuffer = [];
-        for(var i = 0; i < sh; i++){
-            var arr = new Array(sw);
-            arr.fill(0);
-            copyBuffer.push(arr);
-        }
+        copyBuffer = bitmap.slice(y0, y0 + sh).map(function(r){
+            return r.slice(x0, x0 + sw);
+        });
 
         for(var r = 0; r < copyBuffer.length; r++){
             for(var c = 0; c < copyBuffer[r].length; c++){
-                copyBuffer[r][c] = bitmap[y0 + r][x0 + c];
 
-                if(copyBuffer[r][c] === 1){
-                    drawCell(ctx2, x0 + c, y0 + r, CELL_SIZE, CELL_SIZE, "red");
-                }
-
+                bitmap[y0 + r][x0 + c] = 0;
                 drawCell(ctx0, x0 + c, y0 + r, CELL_SIZE, CELL_SIZE, "clear");
-                bitmap[ogy0 + r][ogx0 + c] = 0;
             }
-        }
+        }       
+        drawSelectBox(ctx2, sx0, sy0, sx1, sy1, PREVIEW_COLOR);
     });
 }
 
@@ -589,6 +685,18 @@ document.getElementById("horizontal-btn").addEventListener("click", function(e){
 
 document.getElementById("vertical-btn").addEventListener("click", function(e){
     verticalByte = true;
+});
+
+document.getElementById("download-txt-btn").addEventListener("click", function(){
+    downloadTXT();            
+});
+
+document.getElementById("download-svg-btn").addEventListener("click", function(){
+    downloadSVG();            
+});
+
+document.getElementById("download-png-btn").addEventListener("click", function(){
+    downloadPNG();           
 });
 
 
