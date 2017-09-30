@@ -58,6 +58,16 @@ function invertBitmapColor(){
     }
 }
 
+function flipVertical(){
+    bitmap = bitmap.reverse();
+}
+
+function flipHorizontal(){
+    for(var r = 0; r < bitmap.length; r++){
+        bitmap[r] = bitmap[r].reverse(); 
+    }
+}
+
 function convertBitmapToHex(){
     var hexmap = [];
 
@@ -587,9 +597,14 @@ tools.Select = function(e){
             }
         }       
     }, function(e){
-        selection = true;
-
         var x1 = mPos.col, y1 = mPos.row;
+
+        if(x1 == x0 && y1 == y0){
+            selection = false;
+            return;
+        }
+        
+        selection = true;      
         
         if(x0 > x1){
             var temp = x1; x1 = x0; x0 = temp;
@@ -650,6 +665,16 @@ document.getElementById("line-tool-btn").addEventListener("click", function(e){
     activeTool = "Line";
 });
 
+document.getElementById("flip-vertical-btn").addEventListener("click", function(e){
+    flipVertical();
+    drawBitmap(ctx0);
+});
+
+document.getElementById("flip-horizontal-btn").addEventListener("click", function(e){
+    flipHorizontal();
+    drawBitmap(ctx0);
+});
+
 document.getElementById("clear-btn").addEventListener("click", function(e){
     clearBitmap();
     clearCanvas(ctx0);
@@ -699,6 +724,15 @@ document.getElementById("download-png-btn").addEventListener("click", function()
     downloadPNG();           
 });
 
+document.getElementById("copy-btn").addEventListener("click", function(){
+    document.getElementById("textarea").select();
+    document.execCommand('copy');
+    this.innerHTML  = "Copied!";
+});
+
+document.getElementById("copy-btn").addEventListener("mouseleave", function(){
+    this.innerHTML  = "Copy";
+});
 
 initBitmap();
 drawGrid(ctx1);
