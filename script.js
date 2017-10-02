@@ -68,6 +68,21 @@ function flipHorizontal(){
     }
 }
 
+function validateTextarea(text){
+    var re = /(0x[0-9A-F]{2},\s*){1023}(0x[0-9A-F]{2})/i;
+    var match = text.match(re);
+    
+    if(match == null){
+        document.getElementById("text-error").style.display = "block";
+        document.getElementById("read-btn").disabled = true;
+    }
+    else{
+        document.getElementById("text-error").style.display = "none";
+        document.getElementById("textarea").value = match[0];
+        document.getElementById("read-btn").disabled = false;
+    }
+}
+
 function convertBitmapToHex(){
     var hexmap = [];
 
@@ -603,7 +618,7 @@ tools.Select = function(e){
             selection = false;
             return;
         }
-        
+
         selection = true;      
         
         if(x0 > x1){
@@ -693,7 +708,9 @@ document.getElementById("read-btn").addEventListener("click", function(e){
 
 document.getElementById("write-btn").addEventListener("click", function(e){
     var hexmap = convertBitmapToHex();
-    document.getElementById("textarea").value = prettyPrint(hexmap);
+    var hexText = prettyPrint(hexmap);
+    validateTextarea(hexText);
+    document.getElementById("textarea").value = hexText;
 });
 
 document.getElementById("little-endian-btn").addEventListener("click", function(e){
@@ -732,6 +749,10 @@ document.getElementById("copy-btn").addEventListener("click", function(){
 
 document.getElementById("copy-btn").addEventListener("mouseleave", function(){
     this.innerHTML  = "Copy";
+});
+
+document.getElementById("textarea").addEventListener("input", function(){
+    validateTextarea(this.value);
 });
 
 initBitmap();
