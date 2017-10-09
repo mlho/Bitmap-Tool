@@ -2,6 +2,8 @@ var SCREEN_WIDTH = 128;
 var SCREEN_HEIGHT = 64;
 var CELL_SIZE = 11;
 var PREVIEW_COLOR = "#ff2222";
+var DRAW_COLOR = "white";
+var ERASE_COLOR = "clear";
 
 var prevCursorX, prevCursorY;
 var sx0, sy0, sx1, sy1, sw, sh;
@@ -11,6 +13,43 @@ var verticalByte = false;
 var selection = false;
 var bitmap = [];
 var copyBuffer = [];
+var drawStack = [];
+var redoStack = [];
+
+function Action(func, args = []){
+    this.func = func;
+    this.args = args;
+}
+
+function addToDrawStack(func, args = []){
+    drawStack.push(new Action(func, args));
+    redoStack = [];
+}
+
+function redrawHistory(){
+
+    if(drawStack.length == 0){
+        return;
+    }
+    
+    for(var i = 0; i < drawStack.length; i++){
+        var actObj = drawStack[i];
+        
+        actObj.func.apply(actObj, actObj.args);
+    }
+}
+
+function redo(){
+    
+    if(redoStack.length == 0){
+        return;
+    }
+
+    var actObj = redoStack.pop();
+    drawStack.push(actObj);
+
+    actObj.func.apply(actObj, actObj.args);
+}
 
 var c0 = document.getElementById("canvas-0");
 var ctx0 = c0.getContext("2d");
@@ -59,13 +98,15 @@ function invertBitmapColor(){
 }
 
 function flipVertical(){
-    bitmap = bitmap.reverse();
+    bitmap.reverse();
+    drawBitmap(ctx0);
 }
 
 function flipHorizontal(){
     for(var r = 0; r < bitmap.length; r++){
-        bitmap[r] = bitmap[r].reverse(); 
+        bitmap[r].reverse(); 
     }
+    drawBitmap(ctx0);
 }
 
 function validateTextarea(text){
@@ -303,14 +344,18 @@ function drawCell(ctx, col, row, w, h, color, cOffset = 0, rOffset = 0){
     var x = (col * 12) + 2 + blockX;
     var y = (row * 12) + 2 + blockY;   
 
-    if(color === "clear"){
+    if(color === ERASE_COLOR){
         ctx.clearRect(x + cOffset, y + rOffset, w, h);
+
+        if(ctx === ctx0 && (col <= 127 && col >= 0) && (row <= 63 && row >= 0)){
+            bitmap[row][col] = 0;
+        }
     }
     else{
         ctx.fillStyle = color;
         ctx.fillRect(x + cOffset, y + rOffset, w, h);
 
-        if(color === "white" && (col <= 127 && col >= 0) && (row <= 63 && row >= 0)){
+        if(color == DRAW_COLOR && (col <= 127 && col >= 0) && (row <= 63 && row >= 0)){
             bitmap[row][col] = 1;
         }
     }
@@ -480,6 +525,7 @@ tools.Rectangle = function(e){
     }, function(e){
         drawRect(ctx1, x0, y0, prevRectX, prevRectY, "clear");
         drawRect(ctx0, x0, y0, prevRectX, prevRectY, "white");
+        addToDrawStack(drawRect, [ctx0, x0, y0, prevRectX, prevRectY, DRAW_COLOR]);
     });
 }
 
@@ -500,6 +546,7 @@ tools.Circle = function(e){
         drawCell(ctx1, x0, y0, CELL_SIZE, CELL_SIZE, "clear");
         drawCircle(ctx1, x0, y0, prevCircleX, prevCircleY, "clear");
         drawCircle(ctx0, x0, y0, prevCircleX, prevCircleY, "white");
+        addToDrawStack(drawCircle, [ctx0, x0, y0, prevCircleX, prevCircleY, DRAW_COLOR]);
     });
 }
 
@@ -518,6 +565,7 @@ tools.Line = function(e){
     }, function(e){
         drawLine(ctx1, x0, y0, prevX, prevY, "clear");
         drawLine(ctx0, x0, y0, prevX, prevY, "white");
+        addToDrawStack(drawLine, [ctx0, x0, y0, prevX, prevY, DRAW_COLOR]);
     });
 }
 
@@ -542,6 +590,11 @@ tools.Select = function(e){
             }
         }
         drawBitmap(ctx0);
+
+        addToDrawStack(function(hexmap){
+            convertHexmapToBitmap(hexmap);
+            drawBitmap(ctx0);
+        }, [convertBitmapToHex().toString()]);
     }
 
     c2.addEventListener("dblclick", function(){
@@ -682,28 +735,43 @@ document.getElementById("line-tool-btn").addEventListener("click", function(e){
 
 document.getElementById("flip-vertical-btn").addEventListener("click", function(e){
     flipVertical();
-    drawBitmap(ctx0);
+    addToDrawStack(flipVertical);
 });
 
 document.getElementById("flip-horizontal-btn").addEventListener("click", function(e){
     flipHorizontal();
-    drawBitmap(ctx0);
+    addToDrawStack(flipHorizontal);
 });
 
 document.getElementById("clear-btn").addEventListener("click", function(e){
     clearBitmap();
     clearCanvas(ctx0);
+
+    addToDrawStack(function(){
+        clearBitmap();
+        clearCanvas(ctx0);
+    });
 });
 
 document.getElementById("invert-btn").addEventListener("click", function(e){
     invertBitmapColor();
     drawBitmap(ctx0);
+
+    addToDrawStack(function(){
+        invertBitmapColor();
+        drawBitmap(ctx0);
+    });
 });
 
 document.getElementById("read-btn").addEventListener("click", function(e){
     var input = document.getElementById("textarea").value;
     convertHexmapToBitmap(input);
     drawBitmap(ctx0);
+
+    addToDrawStack(function(){
+        convertHexmapToBitmap(input);
+        drawBitmap(ctx0);
+    });
 });
 
 document.getElementById("write-btn").addEventListener("click", function(e){
@@ -753,6 +821,22 @@ document.getElementById("copy-btn").addEventListener("mouseleave", function(){
 
 document.getElementById("textarea").addEventListener("input", function(){
     validateTextarea(this.value);
+});
+
+document.getElementById("undo-btn").addEventListener("click", function(){
+    clearBitmap();
+    clearCanvas(ctx0);
+
+    console.log(drawStack);
+    
+    if(drawStack.length > 0){
+        redoStack.push(drawStack.pop());
+        redrawHistory();
+    }
+});
+
+document.getElementById("redo-btn").addEventListener("click", function(){
+    redo();
 });
 
 initBitmap();
