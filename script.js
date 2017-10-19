@@ -4,6 +4,9 @@ var CELL_SIZE = 11;
 var PREVIEW_COLOR = "#ff2222";
 var DRAW_COLOR = "white";
 var ERASE_COLOR = "clear";
+var LINE_COLOR = "#e45316";
+var RECT_COLOR = "#18f38c";
+var CIRCLE_COLOR = "#5a77ff";
 
 var prevCursorX, prevCursorY;
 var sx0, sy0, sx1, sy1, sw, sh;
@@ -114,11 +117,16 @@ function validateTextarea(text){
     var match = text.match(re);
     
     if(match == null){
-        document.getElementById("text-error").style.display = "block";
+        if(text === ""){
+            document.getElementById("input-error-wrapper").style.display = "none";
+        }
+        else{
+            document.getElementById("input-error-wrapper").style.display = "block";
+        }
         document.getElementById("read-btn").disabled = true;
     }
     else{
-        document.getElementById("text-error").style.display = "none";
+        document.getElementById("input-error-wrapper").style.display = "none";
         document.getElementById("textarea").value = match[0];
         document.getElementById("read-btn").disabled = false;
     }
@@ -331,9 +339,15 @@ function getMousePosition(e){
     var col = Math.floor((mouseX - blockX) / 12);
     var row = Math.floor((mouseY - blockY) / 12);
 
+    col = Math.max(0, Math.min(col, 127));
+    row = Math.max(0, Math.min(row, 63));
+
+    document.getElementById("x-value").innerHTML = col;
+    document.getElementById("y-value").innerHTML = row;
+
     return {
-        col: Math.max(0, Math.min(col, 127)),
-        row: Math.max(0, Math.min(row, 63))
+        col: col,
+        row: row
     }
 }
 
@@ -492,7 +506,7 @@ function drawLine(ctx, x0, y0, x1, y1, color){
 
 function pencil(e, ctx){
     var mPos = getMousePosition(e)
-    drawCell(ctx, mPos.col, mPos.row, CELL_SIZE, CELL_SIZE, "white");
+    drawCell(ctx, mPos.col, mPos.row, CELL_SIZE, CELL_SIZE, DRAW_COLOR);
 }
 
 function downDrag(onMove, onUp){
@@ -516,15 +530,15 @@ tools.Rectangle = function(e){
     var prevRectX, prevRectY;
 
     downDrag(function(e){
-        drawRect(ctx1, x0, y0, prevRectX, prevRectY, "clear");
+        drawRect(ctx1, x0, y0, prevRectX, prevRectY, ERASE_COLOR);
         mPos = getMousePosition(e);
-        drawRect(ctx1, x0, y0, mPos.col, mPos.row, PREVIEW_COLOR);
+        drawRect(ctx1, x0, y0, mPos.col, mPos.row, RECT_COLOR);
 
         prevRectX = mPos.col;
         prevRectY = mPos.row;
     }, function(e){
-        drawRect(ctx1, x0, y0, prevRectX, prevRectY, "clear");
-        drawRect(ctx0, x0, y0, prevRectX, prevRectY, "white");
+        drawRect(ctx1, x0, y0, prevRectX, prevRectY, ERASE_COLOR);
+        drawRect(ctx0, x0, y0, prevRectX, prevRectY, DRAW_COLOR);
         addToDrawStack(drawRect, [ctx0, x0, y0, prevRectX, prevRectY, DRAW_COLOR]);
     });
 }
@@ -535,17 +549,17 @@ tools.Circle = function(e){
     var prevCircleX, prevCircleY;
 
     downDrag(function(e){
-        drawCell(ctx1, x0, y0, CELL_SIZE, CELL_SIZE, PREVIEW_COLOR);
-        drawCircle(ctx1, x0, y0, prevCircleX, prevCircleY, "clear");
+        drawCell(ctx1, x0, y0, CELL_SIZE, CELL_SIZE, CIRCLE_COLOR);
+        drawCircle(ctx1, x0, y0, prevCircleX, prevCircleY, ERASE_COLOR);
         mPos = getMousePosition(e);
-        drawCircle(ctx1, x0, y0, mPos.col, mPos.row, PREVIEW_COLOR);
+        drawCircle(ctx1, x0, y0, mPos.col, mPos.row, CIRCLE_COLOR);
 
         prevCircleX = mPos.col;
         prevCircleY = mPos.row;
     }, function(e){
-        drawCell(ctx1, x0, y0, CELL_SIZE, CELL_SIZE, "clear");
-        drawCircle(ctx1, x0, y0, prevCircleX, prevCircleY, "clear");
-        drawCircle(ctx0, x0, y0, prevCircleX, prevCircleY, "white");
+        drawCell(ctx1, x0, y0, CELL_SIZE, CELL_SIZE, ERASE_COLOR);
+        drawCircle(ctx1, x0, y0, prevCircleX, prevCircleY, ERASE_COLOR);
+        drawCircle(ctx0, x0, y0, prevCircleX, prevCircleY, DRAW_COLOR);
         addToDrawStack(drawCircle, [ctx0, x0, y0, prevCircleX, prevCircleY, DRAW_COLOR]);
     });
 }
@@ -556,15 +570,15 @@ tools.Line = function(e){
     var prevX, prevY;
 
     downDrag(function(e){
-        drawLine(ctx1, x0, y0, prevX, prevY, "clear");
+        drawLine(ctx1, x0, y0, prevX, prevY, ERASE_COLOR);
         mPos = getMousePosition(e);
-        drawLine(ctx1, x0, y0, mPos.col, mPos.row, PREVIEW_COLOR);
+        drawLine(ctx1, x0, y0, mPos.col, mPos.row, LINE_COLOR);
 
         prevX = mPos.col;
         prevY = mPos.row;
     }, function(e){
-        drawLine(ctx1, x0, y0, prevX, prevY, "clear");
-        drawLine(ctx0, x0, y0, prevX, prevY, "white");
+        drawLine(ctx1, x0, y0, prevX, prevY, ERASE_COLOR);
+        drawLine(ctx0, x0, y0, prevX, prevY, DRAW_COLOR);
         addToDrawStack(drawLine, [ctx0, x0, y0, prevX, prevY, DRAW_COLOR]);
     });
 }
@@ -598,7 +612,7 @@ tools.Select = function(e){
     }
 
     c2.addEventListener("dblclick", function(){
-        if(selection){
+        if(activeTool === "Select" && selection){
             removeSelectBox();
         }
     });
@@ -826,8 +840,6 @@ document.getElementById("textarea").addEventListener("input", function(){
 document.getElementById("undo-btn").addEventListener("click", function(){
     clearBitmap();
     clearCanvas(ctx0);
-
-    console.log(drawStack);
     
     if(drawStack.length > 0){
         redoStack.push(drawStack.pop());

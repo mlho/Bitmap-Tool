@@ -1,3 +1,158 @@
+svg {
+    vertical-align: middle;
+}
+  
+body {
+    font-family: 'Quicksand';
+}
+  
+.logo {
+    transition: 400ms;
+    transition-timing-function: ease-out;
+    -webkit-transition: 400ms;
+    -webkit-transition-timing-function: ease-out;
+}
+  
+.navbar {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    flex-wrap: nowrap;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16), 0 2px 10px rgba(0, 0, 0, 0.12);
+    min-width: 1554px;
+    font-size: 20px;
+    font-family: 'Roboto Mono';
+}
+  
+.logo-container {
+    text-align: left;
+    flex: 1;
+}
+  
+.do-container {
+    border-right: 2px lightgray solid;
+    padding-right: 20px;
+    margin-right: 20px;
+    display: inline-block;
+}
+  
+.tools-container {
+    font-size: 0;
+    flex: 1 0 auto;
+    text-align: center;
+    align-items: center;
+}
+  
+.tool-btn {
+    border: 0;
+    margin: 0;
+    padding: 12px;
+    background: white;
+    cursor: pointer;
+    border-radius: 5px;
+  
+    transition: 300ms;
+    transition-timing-function: ease-in-out;
+    -webkit-transition: 300ms;
+    -webkit-transition-timing-function: ease-in-out;
+}
+  
+.tools:hover {
+    background-color: #e4e4e4;
+}
+  
+.tools:active {
+    background-color: black;
+}
+  
+.coords-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+  
+.coords-row {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    justify-content: flex-end;
+}
+  
+.coords {
+    text-align: right;
+    flex: 0 1 60px;
+    padding-right: 20px;
+}
+  
+#bitmap-tool-logo {
+    padding-left: 10px;
+}
+  
+#bitmap-tool-logo:hover #logo-text {
+    fill: white;
+}
+  
+#bitmap-tool-logo:hover #logo-background {
+    fill: black;
+}
+  
+#undo-btn:active #undo-icon {
+    stroke: white;
+}
+  
+#redo-btn:active #redo-icon {
+    stroke: white;
+}
+  
+#select-btn:active #select-icon {
+    fill: white;
+}
+  
+#flip-horizontal-btn:active #flip-horizontal-icon {
+    stroke: white;
+}
+  
+#flip-vertical-btn:active #flip-vertical-icon {
+    stroke: white;
+}
+  
+#invert-btn:active #invert-black {
+    fill: white;
+}
+#invert-btn:active #invert-white {
+    fill: black;
+}
+  
+#eraser-btn:active {
+    background-color: black;
+}
+  
+#line-btn:active {
+    background-color: black;
+}
+#line-btn:active #line-icon {
+    stroke: #e45316;
+}
+  
+#rect-btn:active {
+    background-color: black;
+}
+#rect-btn:active #rect-icon {
+    stroke: #18f38c;
+}
+  
+#circle-btn:active {
+    background-color: black;
+}
+ #circle-btn:active #circle-icon {
+    stroke: #5a77ff;
+}
+
+.container {
+    padding-top: 30px;
+    text-align: center;
+}
+
 canvas {
     image-rendering: pixelated;
     cursor: crosshair;
@@ -10,6 +165,9 @@ canvas {
     position: relative;
     width: 1554px;
     height: 778px;
+    margin: 0 auto;
+    left: 0;
+    right: 0;
 }
 
 #canvas-0 {
@@ -25,14 +183,113 @@ canvas {
     z-index: 2;
 }
 
-#textarea {
-    width: 1554px;
-    height: 1554px;
-    margin: 0;
-    padding: 0;
+.btn {
+    border: 0;
+    background: #ececec;
+    padding: 8px;
+    text-align: center;
+    font-size: 16px;
+    -webkit-transition-duration: 0.4s; /* Safari */
+    transition-duration: 0.4s;
+    cursor: pointer;
+    font-family: 'Quicksand';
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16), 0 2px 10px rgba(0, 0, 0, 0.12);
+    border-radius: 5px;
+    margin: 8px;
+    min-width: 120px;
 }
 
-#text-error {
-    background-color: #ff2222;
+.btn:disabled {
+    background: none;
+}
+
+.btn:hover:enabled {
+    background: #bebebe;
+}
+
+.btn:active:enabled {
+    background-color: black;
+    color: white;
+}
+
+#clear-btn:hover {
+    background-color: #f31616;
+    color: white;
+}
+
+#clear-btn:active {
+    background-color: black;
+    color: white;
+}
+
+#panel-container {
+    align-items: center;
+    padding-top: 30px;
+    display: flex;
+    width: 1554px;
+    margin: 0 auto;
+}
+
+.panel {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16), 0 2px 10px rgba(0, 0, 0, 0.12);
+    flex: 1;
+    margin: 15px;
+    padding: 20px;
+    font-size: 20px;
+    min-height: 400px;
+}
+
+#filename-input {
+    border-radius: 5px;
+    font-size: 18px;
+    border: 2px #bebebe solid;
+    padding: 5px;
+    margin: 20px;
+}
+
+#input-error-wrapper {
+    background-color: #ff5555;
+    color: #282c34;
     display: none;
+    width: 1556px;
+    margin: 0 auto;
+    font-size: 24px;
+    padding-top: 10px; 
+    padding-bottom: 20px;
+}
+
+#input-error-msg {
+    font-size: 32px;
+    font-weight: bold;
+}
+
+.textarea-container {
+    margin: 0 auto;
+    text-align: center;
+    padding-top: 20px;
+}
+
+textarea {
+    background-color: #282c34;
+    color: #c27b59;
+	border: none;
+    margin: 0 auto;
+    padding-top: 20px;
+    padding-left: 20px;
+    width: 1534px;
+    height: 1554px;
+    font-family: 'Roboto Mono';
+    font-size: 18px;
+    white-space: nowrap;
+    resize: none;
+}
+
+textarea::selection {
+	background: #ececec;
+	color: #000000;
+}
+
+textarea::-moz-selection {
+	background: #ececec;
+	color: #000000;
 }
