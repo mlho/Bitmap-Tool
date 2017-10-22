@@ -16,7 +16,7 @@ var verticalByte = false;
 var selection = false;
 var bitmap = [];
 var copyBuffer = [];
-var drawStack = [];
+var undoStack = [];
 var redoStack = [];
 
 function Action(func, args = []){
@@ -24,19 +24,22 @@ function Action(func, args = []){
     this.args = args;
 }
 
-function addToDrawStack(func, args = []){
-    drawStack.push(new Action(func, args));
+function addToUndoStack(func, args = []){
+    undoStack.push(new Action(func, args));
     redoStack = [];
+
+    document.getElementById("undo-btn").disabled = false;
+    document.getElementById("redo-btn").disabled = true;
 }
 
 function redrawHistory(){
 
-    if(drawStack.length == 0){
+    if(undoStack.length == 0){
         return;
     }
     
-    for(var i = 0; i < drawStack.length; i++){
-        var actObj = drawStack[i];
+    for(var i = 0; i < undoStack.length; i++){
+        var actObj = undoStack[i];
         
         actObj.func.apply(actObj, actObj.args);
     }
@@ -49,7 +52,7 @@ function redo(){
     }
 
     var actObj = redoStack.pop();
-    drawStack.push(actObj);
+    undoStack.push(actObj);
 
     actObj.func.apply(actObj, actObj.args);
 }
@@ -327,6 +330,15 @@ function drawGrid(ctx){
     ctx.stroke();
 }
 
+function updateShapeInfo(topLabel, bottomLabel, topVal, bottomVal){
+    document.getElementById("shape-wrapper").style.display = "block";
+    document.getElementById("shape-label-top").innerHTML = topLabel;
+    document.getElementById("shape-label-bottom").innerHTML = bottomLabel;
+
+    document.getElementById("shape-value-top").innerHTML = topVal;
+    document.getElementById("shape-value-bottom").innerHTML = bottomVal;
+}
+
 function getMousePosition(e){
     var rect = c0.getBoundingClientRect();
 
@@ -504,15 +516,31 @@ function drawLine(ctx, x0, y0, x1, y1, color){
     steep ? drawCell(ctx, y0, x0, CELL_SIZE, CELL_SIZE, color) : drawCell(ctx, x0, y0, CELL_SIZE, CELL_SIZE, color);
 }
 
-function pencil(e, ctx){
-    var mPos = getMousePosition(e)
-    drawCell(ctx, mPos.col, mPos.row, CELL_SIZE, CELL_SIZE, DRAW_COLOR);
+function freeDraw(e, color){
+    var mPos = getMousePosition(e);
+    var prevX = mPos.col, prevY = mPos.row;
+
+    downDrag(function(e){
+        mPos = getMousePosition(e);
+        drawLine(ctx0, mPos.col, mPos.row, prevX, prevY, color);
+
+        prevX = mPos.col;
+        prevY = mPos.row;
+    }, function(e){
+        drawCell(ctx0, mPos.col, mPos.row, CELL_SIZE, CELL_SIZE, color);
+        
+        addToUndoStack(function(hexmap){
+            convertHexmapToBitmap(hexmap);
+            drawBitmap(ctx0);
+        }, [convertBitmapToHex().toString()]);
+    });
 }
 
 function downDrag(onMove, onUp){
     function end(e){
         removeEventListener("mousemove", onMove);
         removeEventListener("mouseup", end);
+        document.getElementById("shape-wrapper").style.display = "none";
         if(onUp){
             onUp(e);
         }
@@ -524,6 +552,14 @@ function downDrag(onMove, onUp){
 
 var tools = {};
 
+tools.Pencil = function(e){
+    freeDraw(e, DRAW_COLOR);
+}
+
+tools.Eraser = function(e){
+    freeDraw(e, ERASE_COLOR);
+}
+
 tools.Rectangle = function(e){
     var mPos = getMousePosition(e);
     var x0 = mPos.col, y0 = mPos.row;
@@ -534,12 +570,28 @@ tools.Rectangle = function(e){
         mPos = getMousePosition(e);
         drawRect(ctx1, x0, y0, mPos.col, mPos.row, RECT_COLOR);
 
+        var tx0 = x0, ty0 = y0;
+        var x1 = mPos.col, y1 = mPos.row;
+
+        if(x0 > x1){
+            var temp = x1; x1 = tx0; tx0 = temp;
+        }
+    
+        if(y0 > y1){
+            var temp = y1; y1 = ty0; ty0 = temp;
+        }    
+
+        var w = x1 - tx0 + 1;
+        var h = y1 - ty0 + 1;
+
+        updateShapeInfo("W:", "H:", w, h);
+
         prevRectX = mPos.col;
         prevRectY = mPos.row;
     }, function(e){
         drawRect(ctx1, x0, y0, prevRectX, prevRectY, ERASE_COLOR);
         drawRect(ctx0, x0, y0, prevRectX, prevRectY, DRAW_COLOR);
-        addToDrawStack(drawRect, [ctx0, x0, y0, prevRectX, prevRectY, DRAW_COLOR]);
+        addToUndoStack(drawRect, [ctx0, x0, y0, prevRectX, prevRectY, DRAW_COLOR]);
     });
 }
 
@@ -554,13 +606,21 @@ tools.Circle = function(e){
         mPos = getMousePosition(e);
         drawCircle(ctx1, x0, y0, mPos.col, mPos.row, CIRCLE_COLOR);
 
+        var r = getDistance(x0, y0, prevCircleX, prevCircleY);
+
+        if(isNaN(r)){
+            r = 0;
+        }
+
+        updateShapeInfo("R:", "", r, "");
+
         prevCircleX = mPos.col;
         prevCircleY = mPos.row;
     }, function(e){
         drawCell(ctx1, x0, y0, CELL_SIZE, CELL_SIZE, ERASE_COLOR);
         drawCircle(ctx1, x0, y0, prevCircleX, prevCircleY, ERASE_COLOR);
         drawCircle(ctx0, x0, y0, prevCircleX, prevCircleY, DRAW_COLOR);
-        addToDrawStack(drawCircle, [ctx0, x0, y0, prevCircleX, prevCircleY, DRAW_COLOR]);
+        addToUndoStack(drawCircle, [ctx0, x0, y0, prevCircleX, prevCircleY, DRAW_COLOR]);
     });
 }
 
@@ -568,6 +628,8 @@ tools.Line = function(e){
     var mPos = getMousePosition(e);
     var x0 = mPos.col, y0 = mPos.row;
     var prevX, prevY;
+
+    updateShapeInfo("X0:", "Y0:", x0, y0);
 
     downDrag(function(e){
         drawLine(ctx1, x0, y0, prevX, prevY, ERASE_COLOR);
@@ -579,7 +641,7 @@ tools.Line = function(e){
     }, function(e){
         drawLine(ctx1, x0, y0, prevX, prevY, ERASE_COLOR);
         drawLine(ctx0, x0, y0, prevX, prevY, DRAW_COLOR);
-        addToDrawStack(drawLine, [ctx0, x0, y0, prevX, prevY, DRAW_COLOR]);
+        addToUndoStack(drawLine, [ctx0, x0, y0, prevX, prevY, DRAW_COLOR]);
     });
 }
 
@@ -605,7 +667,7 @@ tools.Select = function(e){
         }
         drawBitmap(ctx0);
 
-        addToDrawStack(function(hexmap){
+        addToUndoStack(function(hexmap){
             convertHexmapToBitmap(hexmap);
             drawBitmap(ctx0);
         }, [convertBitmapToHex().toString()]);
@@ -668,6 +730,8 @@ tools.Select = function(e){
 
         sw = x1 - tx0 + 1;
         sh = y1 - ty0 + 1;
+        
+        updateShapeInfo("W:", "H:", sw, sh);
 
         drawSelectBox(ctx2, tx0, ty0, x1, y1, PREVIEW_COLOR);
 
@@ -683,6 +747,7 @@ tools.Select = function(e){
 
         if(x1 == x0 && y1 == y0){
             selection = false;
+            clearCanvas(ctx2);
             return;
         }
 
@@ -717,7 +782,36 @@ tools.Select = function(e){
     });
 }
 
-var activeTool = "Rectangle";
+function deactivateTool(tool){
+    var id = "";
+
+    switch(tool){
+        case "Select":
+            id = "select-tool-btn";
+            break;
+        case "Pencil":
+            id = "pencil-tool-btn";
+            break;
+        case "Eraser":
+            id = "eraser-tool-btn";
+            break;
+        case "Line":
+            id = "line-tool-btn";
+            break;
+        case "Rectangle":
+            id = "rectangle-tool-btn";
+            break;
+        case "Circle":
+            id = "circle-tool-btn";
+            break;
+    }
+
+    if(id !== ""){
+        document.getElementById(id).classList.remove("on");
+    }
+}
+
+var activeTool = "Pencil";
 c2.addEventListener("mousedown", function(e){
     e.preventDefault();
     tools[activeTool](e);
@@ -731,37 +825,57 @@ c2.addEventListener("mouseout", function(e){
     drawCell(ctx1, prevCursorX, prevCursorY, CELL_SIZE, CELL_SIZE, "clear");
 });
 
+document.getElementById("pencil-tool-btn").addEventListener("click", function(e){
+    deactivateTool(activeTool);
+    activeTool = "Pencil";
+    this.classList.add("on");
+});
+
+document.getElementById("eraser-tool-btn").addEventListener("click", function(e){
+    deactivateTool(activeTool);
+    activeTool = "Eraser";
+    this.classList.add("on");
+});
+
 document.getElementById("select-tool-btn").addEventListener("click", function(e){
+    deactivateTool(activeTool);
     activeTool = "Select";
+    this.classList.add("on");
 });
 
 document.getElementById("circle-tool-btn").addEventListener("click", function(e){
+    deactivateTool(activeTool);
     activeTool = "Circle";
+    this.classList.add("on");
 });
 
 document.getElementById("rectangle-tool-btn").addEventListener("click", function(e){
+    deactivateTool(activeTool);
     activeTool = "Rectangle";
+    this.classList.add("on");
 });
 
 document.getElementById("line-tool-btn").addEventListener("click", function(e){
+    deactivateTool(activeTool);
     activeTool = "Line";
+    this.classList.add("on");
 });
 
 document.getElementById("flip-vertical-btn").addEventListener("click", function(e){
     flipVertical();
-    addToDrawStack(flipVertical);
+    addToUndoStack(flipVertical);
 });
 
 document.getElementById("flip-horizontal-btn").addEventListener("click", function(e){
     flipHorizontal();
-    addToDrawStack(flipHorizontal);
+    addToUndoStack(flipHorizontal);
 });
 
 document.getElementById("clear-btn").addEventListener("click", function(e){
     clearBitmap();
     clearCanvas(ctx0);
 
-    addToDrawStack(function(){
+    addToUndoStack(function(){
         clearBitmap();
         clearCanvas(ctx0);
     });
@@ -771,7 +885,7 @@ document.getElementById("invert-btn").addEventListener("click", function(e){
     invertBitmapColor();
     drawBitmap(ctx0);
 
-    addToDrawStack(function(){
+    addToUndoStack(function(){
         invertBitmapColor();
         drawBitmap(ctx0);
     });
@@ -782,7 +896,7 @@ document.getElementById("read-btn").addEventListener("click", function(e){
     convertHexmapToBitmap(input);
     drawBitmap(ctx0);
 
-    addToDrawStack(function(){
+    addToUndoStack(function(){
         convertHexmapToBitmap(input);
         drawBitmap(ctx0);
     });
@@ -841,14 +955,26 @@ document.getElementById("undo-btn").addEventListener("click", function(){
     clearBitmap();
     clearCanvas(ctx0);
     
-    if(drawStack.length > 0){
-        redoStack.push(drawStack.pop());
+    if(undoStack.length > 0){
+        redoStack.push(undoStack.pop());
         redrawHistory();
+
+        document.getElementById("redo-btn").disabled = false;
+    }
+    
+    if(undoStack.length == 0){
+        document.getElementById("undo-btn").disabled = true;
     }
 });
 
 document.getElementById("redo-btn").addEventListener("click", function(){
     redo();
+
+    document.getElementById("undo-btn").disabled = false;
+
+    if(redoStack.length == 0){
+        document.getElementById("redo-btn").disabled = true;
+    }
 });
 
 initBitmap();

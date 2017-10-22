@@ -57,18 +57,18 @@ body {
     -webkit-transition-timing-function: ease-in-out;
 }
   
-.tools:hover {
+.tools:hover:enabled {
     background-color: #e4e4e4;
 }
   
-.tools:active {
+.tools:active:enabled {
     background-color: black;
 }
   
 .coords-container {
     flex: 1;
     display: flex;
-    flex-direction: column;
+    flex-direction: row-reverse;
 }
   
 .coords-row {
@@ -83,6 +83,19 @@ body {
     flex: 0 1 60px;
     padding-right: 20px;
 }
+
+#xy-wrapper {
+    flex: 1;
+}
+
+#shape-wrapper {
+    display: none;
+    flex: 1;
+}
+
+.shape-info {
+    display: flex;
+}
   
 #bitmap-tool-logo {
     padding-left: 10px;
@@ -95,17 +108,31 @@ body {
 #bitmap-tool-logo:hover #logo-background {
     fill: black;
 }
-  
-#undo-btn:active #undo-icon {
-    stroke: white;
+
+#undo-btn:disabled #undo-icon {
+    stroke: lightgray;
 }
   
-#redo-btn:active #redo-icon {
+#undo-btn:active:enabled #undo-icon {
     stroke: white;
 }
+
+#redo-btn:disabled #redo-icon {
+    stroke: lightgray;
+}
   
-#select-btn:active #select-icon {
+#redo-btn:active:enabled #redo-icon {
+    stroke: white;
+}
+
+#select-tool-btn:active #select-icon {
     fill: white;
+}
+#select-tool-btn.on {
+    background-color: black;
+}
+#select-tool-btn.on #select-icon {
+    fill: #ff2222;
 }
   
 #flip-horizontal-btn:active #flip-horizontal-icon {
@@ -122,30 +149,34 @@ body {
 #invert-btn:active #invert-white {
     fill: black;
 }
-  
-#eraser-btn:active {
-    background-color: black;
+
+#pencil-tool-btn.on {
+    background-color: #ffe680;
 }
   
-#line-btn:active {
-    background-color: black;
-}
-#line-btn:active #line-icon {
-    stroke: #e45316;
+#eraser-tool-btn.on {
+    background-color: #ffaaaa;
 }
   
-#rect-btn:active {
-    background-color: black;
+#line-tool-btn.on {
+    background-color: #e45316;
 }
-#rect-btn:active #rect-icon {
-    stroke: #18f38c;
+#line-tool-btn.on #line-icon {
+    stroke: white;
 }
   
-#circle-btn:active {
-    background-color: black;
+#rectangle-tool-btn.on {
+    background-color: #18f38c;
 }
- #circle-btn:active #circle-icon {
-    stroke: #5a77ff;
+#rectangle-tool-btn.on #rect-icon{
+    stroke: white;
+}
+
+#circle-tool-btn.on {
+    background-color: #5a77ff;
+}
+ #circle-tool-btn.on #circle-icon {
+    stroke: white;
 }
 
 .container {
